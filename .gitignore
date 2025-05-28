@@ -1,87 +1,87 @@
-# ===== enjoytrip_back =====
-enjoytrip_back/.gitattributes
-enjoytrip_back/HELP.md
+# ===== enjoytrip_BE =====
+enjoytrip_BE/.gitattributes
+enjoytrip_BE/HELP.md
 
 # Maven Wrapper
-!enjoytrip_back/.mvn/wrapper/maven-wrapper.jar
+!enjoytrip_BE/.mvn/wrapper/maven-wrapper.jar
 
 # Maven target folders 제외
-enjoytrip_back/target/
-!enjoytrip_back/**/src/main/**/target/
-!enjoytrip_back/**/src/test/**/target/
+enjoytrip_BE/target/
+!enjoytrip_BE/**/src/main/**/target/
+!enjoytrip_BE/**/src/test/**/target/
 
 # Maven wrapper scripts
-enjoytrip_back/mvnw.cmd
-enjoytrip_back/mvnw
-enjoytrip_back/.mvn
+enjoytrip_BE/mvnw.cmd
+enjoytrip_BE/mvnw
+enjoytrip_BE/.mvn
 
 # Metadata and bin
-enjoytrip_back/.metadata
-enjoytrip_back/bin/**
+enjoytrip_BE/.metadata
+enjoytrip_BE/bin/**
 
 # STS 관련
-enjoytrip_back/.apt_generated
-enjoytrip_back/.classpath
-enjoytrip_back/.factorypath
-enjoytrip_back/.project
-enjoytrip_back/.settings
-enjoytrip_back/.springBeans
-enjoytrip_back/.sts4-cache
+enjoytrip_BE/.apt_generated
+enjoytrip_BE/.classpath
+enjoytrip_BE/.factorypath
+enjoytrip_BE/.project
+enjoytrip_BE/.settings
+enjoytrip_BE/.springBeans
+enjoytrip_BE/.sts4-cache
 
 # IntelliJ IDEA 관련
-enjoytrip_back/.idea
-enjoytrip_back/*.iws
-enjoytrip_back/*.iml
-enjoytrip_back/*.ipr
+enjoytrip_BE/.idea
+enjoytrip_BE/*.iws
+enjoytrip_BE/*.iml
+enjoytrip_BE/*.ipr
 
 # NetBeans 관련
-enjoytrip_back/nbproject/private/
-enjoytrip_back/nbbuild/
-enjoytrip_back/dist/
-enjoytrip_back/nbdist/
-enjoytrip_back/.nb-gradle/
-enjoytrip_back/build/
-!enjoytrip_back/**/src/main/**/build/
-!enjoytrip_back/**/src/test/**/build/
+enjoytrip_BE/nbproject/private/
+enjoytrip_BE/nbbuild/
+enjoytrip_BE/dist/
+enjoytrip_BE/nbdist/
+enjoytrip_BE/.nb-gradle/
+enjoytrip_BE/build/
+!enjoytrip_BE/**/src/main/**/build/
+!enjoytrip_BE/**/src/test/**/build/
 
 # VS Code 관련
-enjoytrip_back/.vscode/
+enjoytrip_BE/.vscode/
 
 # Secret variables
-enjoytrip_back/src/main/resources/application-*.properties
-enjoytrip_back/src/main/webapp/index.html
+enjoytrip_BE/src/main/resources/application-*.properties
+enjoytrip_BE/src/main/webapp/index.html
 
 
-# ===== enjoytrip_front =====
-enjoytrip_front/logs
-enjoytrip_front/*.log
-enjoytrip_front/npm-debug.log*
-enjoytrip_front/yarn-debug.log*
-enjoytrip_front/yarn-error.log*
-enjoytrip_front/pnpm-debug.log*
-enjoytrip_front/lerna-debug.log*
+# ===== enjoytrip_FE =====
+enjoytrip_FE/logs
+enjoytrip_FE/*.log
+enjoytrip_FE/npm-debug.log*
+enjoytrip_FE/yarn-debug.log*
+enjoytrip_FE/yarn-error.log*
+enjoytrip_FE/pnpm-debug.log*
+enjoytrip_FE/lerna-debug.log*
 
-enjoytrip_front/node_modules
-enjoytrip_front/.DS_Store
-enjoytrip_front/dist
-enjoytrip_front/dist-ssr
-enjoytrip_front/coverage
-enjoytrip_front/*.local
-enjoytrip_front/package-lock.json
+enjoytrip_FE/node_modules
+enjoytrip_FE/.DS_Store
+enjoytrip_FE/dist
+enjoytrip_FE/dist-ssr
+enjoytrip_FE/coverage
+enjoytrip_FE/*.local
+enjoytrip_FE/package-lock.json
 
-enjoytrip_front/cypress/videos/
-enjoytrip_front/cypress/screenshots/
+enjoytrip_FE/cypress/videos/
+enjoytrip_FE/cypress/screenshots/
 
 # Editor directories and files
-enjoytrip_front/.vscode/*
-!enjoytrip_front/.vscode/extensions.json
-enjoytrip_front/.idea
-enjoytrip_front/*.suo
-enjoytrip_front/*.ntvs*
-enjoytrip_front/*.njsproj
-enjoytrip_front/*.sln
-enjoytrip_front/*.sw?
+enjoytrip_FE/.vscode/*
+!enjoytrip_FE/.vscode/extensions.json
+enjoytrip_FE/.idea
+enjoytrip_FE/*.suo
+enjoytrip_FE/*.ntvs*
+enjoytrip_FE/*.njsproj
+enjoytrip_FE/*.sln
+enjoytrip_FE/*.sw?
 
-enjoytrip_front/*.tsbuildinfo
+enjoytrip_FE/*.tsbuildinfo
 
-enjoytrip_front/.env
+enjoytrip_FE/.env
