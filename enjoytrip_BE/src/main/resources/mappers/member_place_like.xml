@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ssafy.trip.domain.memberplace.interaction.MemberPlaceLikeDao">
+    <insert id="insert">
+        insert into member_place_like(member_place_id, member_id, created_at)
+        values(#{memberPlaceId}, #{memberId}, now())
+    </insert>
+
+    <update id="delete">
+        update member_place_like
+        set
+            deleted_at = now()
+        where member_place_id=#{memberPlaceId} and member_id=#{memberId}
+    </update>
+</mapper>

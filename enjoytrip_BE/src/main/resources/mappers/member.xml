@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ssafy.trip.domain.member.MemberDao">
+
+	<insert id="insert" useGeneratedKeys="true" keyProperty="id">
+		INSERT INTO member (email, password, name, role, birth_date, profile_image, created_at)
+		VALUES (#{email}, #{password}, #{name}, #{role}, #{birthDate}, #{profileImage}, NOW());
+	</insert>
+
+	<insert id="insertWithoutPassword" useGeneratedKeys="true" keyProperty="id">
+		INSERT INTO member (email, name, role, created_at, profile_image)
+		VALUES (#{email}, #{name}, #{role}, NOW(), #{profileImage})
+	</insert>
+
+	<select id="selectAll" resultType="Member">
+		SELECT * FROM member
+		<where>
+			<if test="keyword != null">
+				AND name LIKE CONCAT('%', #{keyword}, '%')
+			</if>
+
+			<if test="status != null">
+				<choose>
+					<when test="status == '탈퇴'">
+						AND deleted_at IS NOT NULL
+					</when>
+					<when test="status == '정지'">
+						AND blocked_at IS NOT NULL
+					</when>
+					<when test="status == '활성'">
+						AND deleted_at IS NULL
+						AND blocked_at IS NULL
+					</when>
+				</choose>
+			</if>
+		</where>
+		LIMIT #{offset}, #{size}
+	</select>
+
+	<select id="countAll">
+		select count(*) from member
+		<where>
+			<if test="keyword != null">
+				AND name LIKE CONCAT('%', #{keyword}, '%')
+			</if>
+
+			<if test="status != null">
+				<choose>
+					<when test="status == '탈퇴'">
+						AND deleted_at IS NOT NULL
+					</when>
+					<when test="status == '정지'">
+						AND blocked_at IS NOT NULL
+					</when>
+					<when test="status == '활성'">
+						AND deleted_at IS NULL
+						AND blocked_at IS NULL
+					</when>
+				</choose>
+			</if>
+		</where>
+	</select>
+
+	<update id="blockingMember">
+		update member
+			set blocked_at = now()
+		where id=#{memberId}
+	</update>
+
+	<update id="unBlockingMember">
+		update member
+		set blocked_at = null
+		where id=#{memberId}
+	</update>
+
+	<select id="selectById">
+		select * from member
+		where id=#{id}
+	</select>
+
+	<select id="selectByEmail">
+		select * from member
+		where email=#{email}
+	</select>
+	
+	<update id="update">
+		update member 
+		set
+			name = #{name},
+      		birth_date = #{birthDate},
+      		profile_image = #{profileImage}
+      	where id=#{id}
+	</update>
+
+	<update id="updatePassword">
+		update member
+		set
+			password = #{password}
+		where id = #{id}
+	</update>
+	
+	<update id="softDelete">
+		update member
+		set
+			deleted_at = now()
+		where id = #{id}
+	</update>
+	
+	<resultMap id="memberMap" type="Member">
+		<id column="id" property="id" />
+		<result column="email" property="email" />
+		<result column="password" property="password" />
+		<result column="name" property="name" />
+		<result column="role" property="role" />
+		<result column="created_at" property="createdAt" />
+		<result column="birth_date" property="birthDate" />
+		<result column="profile_image" property="profileImage" />
+	</resultMap>
+
+	<resultMap id="memberMapWithAlias" type="Member">
+		<id column="m_id" property="id" />
+		<result column="m_name" property="name" />
+		<result column="m_profile_image" property="profileImage" />
+	</resultMap>
+</mapper>

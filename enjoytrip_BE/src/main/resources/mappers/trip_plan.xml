@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ssafy.trip.domain.tripplan.TripPlanDao">
+
+    <!--  TODO: 정렬조건 추가  -->
+    <select id="selectById" resultMap="tripPlanMap">
+        select tp.id AS tp_id, tp.created_at, tp.modified_at, tp.deleted_at, tp.title as tp_title, tp.description, tp.start_date, tp.end_date, tp.member_id, tp.like_count, tp.view_count,
+        m.id AS m_id, m.email, m.name, m.role, m.birth_date, m.profile_image, 
+        tpd.id AS tpd_id, tpd.date, tpd.day_order, tpd.trip_plan_id,
+        pi.id AS pi_id, pi.description as pi_description, pi.item_order, pi.item_type, pi.trip_plan_day_id, pi.attraction_id, pi.member_place_id,
+        a.id AS a_id, a.content_id, a.title, a.image1, a.image2, a.map_level, a.latitude, a.longitude, a.tel, a.address1, a.address2, a.homepage,
+        mp.id AS mp_id, mp.created_at, mp.modified_at, mp.name as mp_name, mp.latitude as mp_latitude, mp.longitude as mp_longitude, mp.description as mp_description, mp.address as mp_address, mp.image as mp_image, mp.like_count, mp.deleted_at as mp_deleted_at,
+        r.id AS r_id, r.from_item_id, r.to_item_id, r.distance, r.duration,
+        ac.category_id as a_category_id, ac.category_name as a_category_name,
+        mc.category_id as m_category_id, mc.category_name as m_category_name,
+        ts.style as ts_style
+        from trip_plan tp
+		join member m on tp.member_id = m.id
+		left join trip_plan_day tpd on tp.id = tpd.trip_plan_id
+        left join plan_item pi on tpd.id = pi.trip_plan_day_id
+		left join attraction a on pi.attraction_id IS NOT NULL AND pi.attraction_id = a.id
+        left join category ac on pi.attraction_id IS NOT NULL AND a.category_id = ac.category_id
+        left join member_place mp on pi.member_place_id IS NOT NULL AND pi.member_place_id = mp.id
+        left join category mc on pi.member_place_id IS NOT NULL AND mp.category_id = mc.category_id
+        LEFT JOIN trip_style ts ON tp.id = ts.trip_plan_id
+		left join route_connection r on r.from_item_id = (
+		    select p2.id
+		    from plan_item p2
+		    WHERE p2.trip_plan_day_id = pi.trip_plan_day_id
+		      AND p2.item_order = pi.item_order - 1
+		    LIMIT 1
+		)
+		where tp.id = #{id}
+        and tp.deleted_at IS NULL;
+    </select>
+
+    <select id="selectSimpleById" resultMap="tripSummaryMap">
+        SELECT id AS tp_id, created_at, modified_at, deleted_at, title, description, start_date, end_date, member_id, like_count
+        FROM trip_plan
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectAll" resultMap="tripPlanMap">
+        SELECT tp.id AS tp_id, tp.created_at, tp.modified_at, tp.deleted_at,
+        tp.title as tp_title, tp.description, tp.start_date, tp.end_date,
+        tp.member_id, tp.like_count, tp.view_count,
+        m.id as m_id, m.name as m_name, m.profile_image as m_profile_image,
+        ts.style as ts_style,
+        CASE
+            WHEN #{loginMemberId} IS NULL THEN 0
+            WHEN tpl.trip_plan_id IS NOT NULL THEN 1
+            ELSE 0
+        END AS is_liked
+        FROM (
+            SELECT distinct tp.*
+            FROM trip_plan tp
+            JOIN trip_plan_day tpd ON tp.id = tpd.trip_plan_id
+        <where>
+                tp.deleted_at IS NULL
+                <if test="tripStyle != null">
+                    AND EXISTS (
+                    SELECT 1 FROM trip_style ts_sub
+                    WHERE ts_sub.trip_plan_id = tp.id AND ts_sub.style = #{tripStyle}
+                    )
+                </if>
+                <if test="ranges != null and !ranges.isEmpty()">
+                    AND (
+                    <foreach collection="ranges" item="range" separator=" OR ">
+                        tp.total_days BETWEEN #{range.start} AND #{range.end}
+                    </foreach>
+                    )
+                </if>
+                <if test="seasons != null and !seasons.isEmpty()">
+                    AND tp.season IN
+                    <foreach collection="seasons" item="season" open="(" separator="," close=")">
+                        #{season}
+                    </foreach>
+                </if>
+            </where>
+        <if test="sort != null">
+            ORDER BY tp.${sort} DESC
+        </if>
+        LIMIT #{size} OFFSET #{offset}
+        ) tp
+        JOIN member m ON tp.member_id = m.id
+        LEFT JOIN trip_style ts ON tp.id = ts.trip_plan_id
+        <!-- 로그인한 경우 좋아요 여부 판단 -->
+        <if test="loginMemberId != null">
+            LEFT JOIN trip_plan_like tpl
+            ON tpl.trip_plan_id = tp.id AND tpl.member_id = #{loginMemberId}
+            AND tpl.deleted_at IS NULL
+        </if>
+        <if test="loginMemberId == null">
+            LEFT JOIN trip_plan_like tpl
+            ON 1=0
+        </if>
+    </select>
+
+    <select id="countAll">
+        SELECT COUNT(DISTINCT tp.id) FROM trip_plan tp
+        JOIN member m ON tp.member_id = m.id
+        LEFT JOIN trip_style ts ON tp.id = ts.trip_plan_id
+        JOIN trip_plan_day tpd ON tp.id = tpd.trip_plan_id
+        <where>
+            tp.deleted_at IS NULL
+            <if test="memberId != null">
+                AND tp.member_id = #{memberId}
+            </if>
+            <if test="tripStyle != null">
+                AND ts.style = #{tripStyle}
+            </if>
+            <if test="ranges != null and !ranges.isEmpty()">
+                AND (
+                <foreach collection="ranges" item="range" separator=" OR ">
+                    tp.total_days BETWEEN #{range.start} AND #{range.end}
+                </foreach>
+                )
+            </if>
+            <if test="seasons != null and !seasons.isEmpty()">
+                AND tp.season IN
+                <foreach collection="seasons" item="season" open="(" separator="," close=")">
+                    #{season}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <select id="selectAllMine" resultMap="tripSummaryMap">
+        SELECT DISTINCT tp.id AS tp_id, tp.created_at, tp.modified_at, tp.deleted_at,
+        tp.title as tp_title, tp.description, tp.start_date, tp.end_date
+        FROM trip_plan tp
+        JOIN member m ON tp.member_id = m.id
+        JOIN trip_plan_day tpd ON tp.id = tpd.trip_plan_id
+        <where>
+            tp.deleted_at IS NULL
+            AND tp.member_id = #{memberId}
+            <if test="status != null and status.equals('upcoming')">
+                AND #{now} &lt; tp.start_date
+            </if>
+            <if test="status != null and status.equals('ongoing')">
+                AND #{now} BETWEEN tp.start_date AND tp.end_date
+            </if>
+            <if test="status != null and status.equals('completed')">
+                AND #{now} &gt; tp.end_date
+            </if>
+
+        </where>
+        ORDER BY created_at DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countAllMine" >
+        SELECT count(DISTINCT tp.id)
+        FROM trip_plan tp
+        JOIN member m ON tp.member_id = m.id
+        JOIN trip_plan_day tpd ON tp.id = tpd.trip_plan_id
+        <where>
+            tp.deleted_at IS NULL
+            AND tp.member_id = #{memberId}
+            <if test="status != null and status.equals('upcoming')">
+                AND #{now} &lt; tp.start_date
+            </if>
+            <if test="status != null and status.equals('ongoing')">
+                AND #{now} BETWEEN tp.start_date AND tp.end_date
+            </if>
+            <if test="status != null and status.equals('completed')">
+                AND #{now} &gt; tp.end_date
+            </if>
+        </where>
+    </select>
+
+    <insert id="insert" parameterType="TripPlan" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO trip_plan
+        (
+            created_at, modified_at, deleted_at, title, description, start_date, end_date, member_id, like_count, total_days, season
+        ) VALUES (
+            now(), now(), null, #{title}, #{description}, #{startDate}, #{endDate}, #{memberId}, #{likeCount}, #{totalDays}, #{season}
+        )
+    </insert>
+
+    <update id="update" parameterType="TripPlan" useGeneratedKeys="true" keyProperty="id">
+        UPDATE trip_plan
+        SET
+            modified_at = now(),
+            title = #{title},
+            description = #{description}
+        WHERE id = #{id}
+    </update>
+
+    <update id="delete">
+        UPDATE trip_plan
+        SET
+            deleted_at = now()
+        WHERE id = #{id}
+    </update>
+
+    <insert id="insertTripStyles">
+        INSERT INTO trip_style (trip_plan_id, style)
+        VALUES
+        <foreach collection="list" item="style" separator=",">
+            (#{style.tripPlanId}, #{style.style})
+        </foreach>
+    </insert>
+
+    <insert id="insertTripPlanDays" parameterType="java.util.List" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO trip_plan_day (date, day_order, trip_plan_id)
+        VALUES
+        <foreach collection="list" item="day" separator=",">
+            (#{day.date}, #{day.dayOrder}, #{day.tripPlanId})
+        </foreach>
+    </insert>
+
+    <update id="updateTripPlanDays" parameterType="java.util.List">
+        <foreach collection="list" item="day" separator=";">
+            UPDATE trip_plan_day
+            SET
+                date = #{day.date},
+                day_order = #{day.dayOrder},
+            WHERE id = #{day.id}
+        </foreach>
+    </update>
+
+    <delete id="deleteTripPlanDays" parameterType="java.util.List">
+        DELETE FROM trip_plan_day
+        WHERE id IN
+        <foreach collection="list" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+
+    <select id="selectMostLikedId">
+        SELECT trip_plan_id
+        FROM (
+            SELECT trip_plan_id
+            FROM trip_plan_like
+            WHERE deleted_at IS NULL
+            ORDER BY created_at DESC
+            LIMIT 100
+        ) AS recent_likes
+        GROUP BY trip_plan_id
+        ORDER BY COUNT(*) DESC
+        LIMIT 1;
+    </select>
+
+    <update id="updateLikeCount">
+        update trip_plan set like_count = #{likeCount} where id=#{id}
+    </update>
+
+    <update id="updateViewCount">
+        update trip_plan set view_count = #{viewCount} where id=#{id}
+    </update>
+
+
+
+    <resultMap id="tripPlanMap" type="TripPlan">
+        <id property="id" column="tp_id" />
+        <result property="createdAt" column="created_at" />
+        <result property="modifiedAt" column="modified_at" />
+        <result property="deletedAt" column="deleted_at" />
+        <result property="title" column="tp_title" />
+        <result property="description" column="description" />
+        <result property="startDate" column="start_date" />
+        <result property="endDate" column="end_date" />
+        <result property="memberId" column="member_id" />
+        <result property="likeCount" column="like_count" />
+        <result property="viewCount" column="view_count" />
+        <result property="isLiked" column="is_liked" />
+        <association property="member" resultMap="com.ssafy.trip.domain.member.MemberDao.memberMapWithAlias"/>
+        <collection property="tripPlanDays" ofType="TripPlanDay" javaType="ArrayList" resultMap="tripPlanDayMap" />
+        <collection property="tripStyles" ofType="com.ssafy.trip.domain.tripplan.enums.TripStyle"
+                    column="tp_id"
+                    javaType="java.util.ArrayList"
+                    resultMap="tripStyleMap"/>
+    </resultMap>
+
+    <resultMap id="tripSummaryMap" type="TripPlan">
+        <id property="id" column="tp_id" />
+        <result property="createdAt" column="created_at" />
+        <result property="modifiedAt" column="modified_at" />
+        <result property="deletedAt" column="deleted_at" />
+        <result property="title" column="tp_title" />
+        <result property="description" column="description" />
+        <result property="startDate" column="start_date" />
+        <result property="endDate" column="end_date" />
+        <result property="memberId" column="member_id" />
+        <result property="likeCount" column="like_count" />
+        <result property="isLiked" column="is_liked" />
+    </resultMap>
+
+    <resultMap id="tripStyleMap" type="com.ssafy.trip.domain.tripplan.enums.TripStyle">
+        <result column="ts_style" javaType="com.ssafy.trip.domain.tripplan.enums.TripStyle"/>
+    </resultMap>
+
+    <resultMap id="tripPlanDayMap" type="TripPlanDay">
+        <id property="id" column="tpd_id" />
+        <result property="date" column="date" />
+        <result property="dayOrder" column="day_order" />
+        <result property="tripPlanId" column="trip_plan_id" />
+        <collection property="planItems" ofType="PlanItem" javaType="ArrayList" resultMap="com.ssafy.trip.domain.tripplan.PlanItemDao.planItemMap" />
+    </resultMap>
+</mapper>

@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ssafy.trip.domain.article.ArticleDao">
+
+	<select id="selectAll" resultMap="articleMap">
+    SELECT
+        a.*,
+        m.id AS member_id,
+        m.email AS member_email,
+        m.name AS member_name,
+        m.role AS member_role,
+        m.profile_image AS member_profile_image,
+        COALESCE(c.comment_count, 0) AS comment_count
+    FROM article a
+    	LEFT JOIN member m ON a.member_id = m.id
+    	LEFT JOIN (
+	        SELECT article_id, COUNT(*) AS comment_count
+	        FROM comment
+	        WHERE deleted_at IS NULL AND blocked_at IS NULL AND parent_id IS NULL
+	        GROUP BY article_id
+	    ) c ON a.id = c.article_id
+    <where>
+        <if test="title != null and title != ''">
+            AND a.title LIKE CONCAT('%', #{title}, '%')
+        </if>
+        <if test="memberId != null">
+            AND a.member_id = #{memberId}
+        </if>
+        <if test="articleType != null">
+            AND a.article_type = #{articleType}
+        </if>
+		<if test="!deleted">
+			AND a.deleted_at IS NULL
+			AND a.blocked_at IS NULL
+		</if>
+    </where>
+
+    ORDER BY 
+    <choose>
+        <when test="sort != null and sort.name() == 'VIEW_COUNT'">a.view_count</when>
+        <when test="sort != null and sort.name() == 'LIKE_COUNT'">a.like_count</when>
+        <when test="sort != null and sort.name() == 'CREATED_AT'">a.created_at</when>
+        <when test="sort != null and sort.name() == 'COMMENT_COUNT'">comment_count</when>
+        <otherwise>a.id</otherwise>
+    </choose> DESC
+
+    LIMIT #{size} OFFSET #{offset}
+	</select>
+
+	
+	<select id="countAll">
+		SELECT
+			count(*)
+		FROM 
+			article a
+	    <where>
+	        <if test="title != null and title != ''">
+	            AND a.title LIKE CONCAT('%', #{title}, '%')
+	        </if>
+	        <if test="memberId != null">
+	            AND a.member_id = #{memberId}
+	        </if>
+	        <if test="articleType != null">
+	            AND a.article_type = #{articleType}
+	        </if>
+			<if test="!deleted">
+				AND a.deleted_at IS NULL
+				AND a.blocked_at IS NULL
+			</if>
+		</where>
+	</select>
+	
+	<select id="select" resultMap="articleMap">
+	  SELECT 
+	    a.*,
+	    m.email AS member_email, 
+	    m.name AS member_name, 
+	    m.role AS member_role, 
+	    m.profile_image AS member_profile_image,
+	    COUNT(c.id) AS comment_count,
+		CASE
+			WHEN #{loginMemberId} IS NULL THEN 0
+			WHEN al.article_id IS NOT NULL THEN 1
+			ELSE 0
+		END AS is_liked
+	  FROM article a 
+	    LEFT JOIN member m ON a.member_id = m.id
+	    LEFT JOIN comment c ON a.id = c.article_id AND c.deleted_at IS NULL AND c.blocked_at IS NULL AND c.parent_id IS NULL
+		<!-- 로그인한 경우 좋아요 여부 판단-->
+		<if test="loginMemberId != null">
+			LEFT JOIN article_like al
+			ON al.article_id = a.id AND al.member_id = #{loginMemberId}
+			AND al.deleted_at is null
+		</if>
+		<if test="loginMemberId == null">
+			LEFT JOIN article_like al
+			ON 1=0  <!-- join 안 되게 해서 무조건 NULL로 만듦 -->
+		</if>
+	  WHERE a.id = #{id}
+	  	<if test="!isDeleted">
+	  		AND a.deleted_at IS NULL 
+	  		AND a.blocked_at IS NULL
+	  	</if>
+
+	  GROUP BY a.id
+	</select>
+
+	<insert id="insert" useGeneratedKeys="true" keyProperty="id">
+	    INSERT INTO article (title, content, view_count, like_count, created_at, member_id, article_type)
+	    VALUES (#{title}, #{content}, 0, 0, now(), #{member.id}, #{articleType})	
+	</insert>
+
+	<update id="update">
+		update article
+		<set>
+			<if test="title!=null">title = #{title}, </if>
+			<if test="content!=null">content = #{content}, </if>
+			<if test="member.id!=null">member_id = #{member.id}, </if>
+			modified_at = now()
+		</set>
+		where id = #{id}
+	</update>
+
+	<update id="updateViewCnt">
+		update article set view_count = #{viewCount} where id = #{id}
+	</update>
+
+	<update id="updateLikeCnt">
+		update article set like_count = #{likeCount} where id = #{id}
+	</update>
+	
+	<update id="delete">
+		update article set deleted_at = now() where id = #{id}
+	</update>
+	
+	<select id="selectNext">
+		select id, title from article where deleted_at is null and blocked_at IS NULL and id &gt; #{id} AND article_type = #{articleType} order by id asc limit 1
+	</select>
+	
+	<select id="selectPrevious">
+		select id, title from article where deleted_at is null and blocked_at IS NULL and id &lt; #{id} AND article_type = #{articleType} order by id desc limit 1
+	</select>
+	
+	<!-- QnA -->
+	<select id="selectQnaList" resultMap="articleAnswerMap">
+	  SELECT 
+	    a.*, 
+	    m.id AS member_id,
+        m.email AS member_email,
+        m.name AS member_name,
+        m.role AS member_role,
+        m.profile_image AS member_profile_image,
+        ans.id AS answer_id,
+	    ans.content AS answer_content,
+	    ans.created_at AS answer_created_at,
+	    ans.status AS answer_status
+	  FROM article a 
+	  LEFT JOIN qna_answer ans ON a.id = ans.article_id
+	  LEFT JOIN member m ON a.member_id = m.id
+	  WHERE a.article_type = 'QNA' AND a.deleted_at is null
+	  	<if test="memberId!=null">AND a.member_id = #{memberId} </if>
+	  	<if test="title!=null">AND a.title like CONCAT("%", #{title}, "%") </if>
+	  	<choose>
+	  		<when test="status == 'pending'">
+		      AND ans.status = 'PENDING'
+		    </when>
+		    <when test="status == 'answered'">
+		      AND ans.status = 'ANSWERED'
+		    </when>
+	  	</choose>
+	 	ORDER BY created_at DESC
+	  	LIMIT #{size} OFFSET #{offset}
+	</select>
+	
+	<select id="countQna">
+	  SELECT 
+	    count(*)
+	  FROM article a
+	  LEFT JOIN qna_answer ans ON a.id = ans.article_id
+	  WHERE a.article_type = 'QNA' AND a.deleted_at is null
+	  	<if test="memberId!=null">AND a.member_id = #{memberId} </if>
+	  	<if test="title!=null">AND a.title like CONCAT("%", #{title}, "%") </if>
+	  	<choose>
+	  		<when test="status == 'pending'">
+		      AND ans.status = 'PENDING'
+		    </when>
+		    <when test="status == 'answered'">
+		      AND ans.status = 'ANSWERED'
+		    </when>
+	  	</choose>
+	</select>
+
+	<resultMap id="articleMap" type="Article">
+	    <!-- 기본 Article 필드 -->
+	    <id property="id" column="id"/>
+	    <result property="viewCount" column="view_count"/>
+	    <result property="likeCount" column="like_count"/>
+	    <result property="commentCount" column="comment_count" />
+	    <result property="createdAt" column="created_at"/>
+	    <result property="modifiedAt" column="modified_at"/>
+	    <result property="title" column="title"/>
+	    <result property="content" column="content"/>
+	    <result property="deletedAt" column="deleted_at"/>
+		<result property="isLiked" column="is_liked" />
+
+		<result property="articleType" column="article_type" javaType="com.ssafy.trip.domain.article.enums.ArticleType"/>
+		<!-- Member -->
+	    <association property="member" javaType="Member">
+	        <id property="id" column="member_id"/>
+	        <result property="email" column="member_email"/>
+	        <result property="name" column="member_name"/>
+	        <result property="role" column="member_role" javaType="com.ssafy.trip.domain.auth.enums.Role"/>
+	        <result property="profileImage" column="member_profile_image"/>
+	    </association>
+	</resultMap>	
+	
+	<resultMap id="articleAnswerMap" type="ArticleAnswer">
+	    <association property="article" resultMap="articleMap"/>
+	
+    	<!-- Answer 객체 매핑 -->
+	    <association property="answer" javaType="QnaAnswer">
+	        <id property="id" column="answer_id"/>
+	        <result property="content" column="answer_content"/>
+	        <result property="createdAt" column="answer_created_at"/>
+	        <result property="status" column="answer_status"/>
+	    </association>
+	</resultMap>
+	
+</mapper>

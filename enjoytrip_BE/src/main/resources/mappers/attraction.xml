@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ssafy.trip.domain.attraction.AttractionDao">
+
+	<select id="selectAllName" resultMap="attractionMap">
+		select id, title from attraction;
+	</select>
+
+	<select id="updateLikeCount">
+		update attraction set like_count = #{likeCount} where id=#{id}
+	</select>
+
+	<select id="getListWithPaging" resultMap="attractionMap">
+		SELECT *
+		FROM attraction a
+		JOIN category c ON a.category_id = c.category_id
+		<where>
+			<if test="sidoCode!=null">and a.sido_code=#{sidoCode} </if>
+			<if test="gugunCode!=null">and a.gugun_code=#{gugunCode} </if>
+			<if test="categoryId!=null">and a.category_id=#{categoryId} </if>
+		</where>
+		<if test="sort!=null">
+			order by a.${sort} desc
+		</if>
+		LIMIT #{size} OFFSET #{offset}
+	</select>
+
+	<select id="getTotalCount">
+		SELECT count(*)
+		FROM attraction a
+		JOIN category c ON a.category_id = c.category_id
+		<where>
+			<if test="sidoCode!=null">and a.sido_code=#{sidoCode} </if>
+			<if test="gugunCode!=null">and a.gugun_code=#{gugunCode} </if>
+			<if test="categoryId!=null">and a.category_id=#{categoryId} </if>
+		</where>
+	</select>
+
+	<select id="search" resultMap="attractionMap">
+		select * from attraction 
+    	<where>
+    		<if test="sidoCode!=null">and sido_code=#{sidoCode} </if>
+    		<if test="gugunCode!=null">and gugun_code=#{gugunCode} </if>
+	   		<if test="categoryId!=null">and category_id=#{categoryId} </if>		
+    	</where>
+	</select>
+
+	<select id="getListNearby" resultMap="attractionMap">
+		select * from attraction
+		<where>
+			latitude BETWEEN #{minLat} AND #{maxLat}
+			AND longitude BETWEEN #{minLon} AND #{maxLon}
+			<if test="categoryId!=null">and category_id=#{categoryId} </if>
+		</where>
+	</select>
+
+	<select id="selectSummaryById" resultMap="attractionMap">
+		select * from attraction
+		where id=#{id}
+	</select>
+
+	<select id="select" resultMap="attractionMap">
+		select a.*, 
+			s.id as sido_id, s.sido_name, 
+    		g.id as gugun_id, g.gugun_code, g.gugun_name, 
+    		c.category_name,
+			CASE
+				WHEN #{loginMemberId} IS NULL THEN 0
+				WHEN al.attraction_id IS NOT NULL THEN 1
+				ELSE 0
+			END AS is_liked
+		from attraction a join sido s on a.sido_code = s.sido_code 
+			join gugun g on a.gugun_code = g.gugun_code and a.sido_code = g.sido_code 
+    		join category c on a.category_id = c.category_id
+		<!-- 로그인한 경우 좋아요 여부 판단-->
+		<if test="loginMemberId != null">
+			LEFT JOIN attraction_like al
+			ON al.attraction_id = a.id AND al.member_id = #{loginMemberId}
+			AND al.deleted_at is null
+		</if>
+		<if test="loginMemberId == null">
+			LEFT JOIN attraction_like al
+			ON 1=0  <!-- join 안 되게 해서 무조건 NULL로 만듦 -->
+		</if>
+    	where a.id=#{attractionId}
+	</select>
+	
+	<resultMap type="Attraction" id="attractionMap">
+		<id column="id" property="id"/>
+		<result column="content_id" property="contentId"/>
+		<result column="title" property="title"/>
+		<result column="image1" property="image1"/>
+		<result column="image2" property="image2"/>
+		<result column="mapLevel" property="mapLevel"/>
+		<result column="latitude" property="latitude"/>
+		<result column="longitude" property="longitude"/>
+		<result column="tel" property="tel"/>
+		<result column="address1" property="address1"/>
+		<result column="address2" property="address2"/>
+		<result column="homepage" property="homepage"/>
+		<result column="overview" property="overview"/>
+		<result property="isLiked" column="is_liked" />
+		<result property="likeCount" column="like_count" />
+		<association property="sido" javaType="Sido">
+			<id column="sido_id" property="id"/>
+			<result column="sido_code" property="sidoCode"/>
+			<result column="sido_name" property="sidoName"/>
+		</association>
+		<association property="gugun" javaType="Gugun">
+			<id column="gugun_id" property="id"/>
+			<result column="sido_code" property="sidoCode"/>
+			<result column="gugun_code" property="gugunCode"/>
+			<result column="gugun_name" property="gugunName"/>
+		</association>
+		<association property="category" javaType="Category">
+			<id column="category_id" property="categoryId"/>
+			<result column="category_name" property="categoryName"/>
+		</association>
+	</resultMap>
+	
+	<resultMap type="Attraction" id="attractionMapWithAlias">
+		<id column="id" property="a_id"/>
+		<result column="content_id" property="contentId"/>
+		<result column="title" property="title"/>
+		<result column="image1" property="image1"/>
+		<result column="image2" property="image2"/>
+		<result column="mapLevel" property="mapLevel"/>
+		<result column="latitude" property="latitude"/>
+		<result column="longitude" property="longitude"/>
+		<result column="tel" property="tel"/>
+		<result column="address1" property="address1"/>
+		<result column="address2" property="address2"/>
+		<result column="homepage" property="homepage"/>
+		<result column="overview" property="overview"/>
+		<association property="category" javaType="Category">
+			<id column="a_category_id" property="categoryId"/>
+			<result column="a_category_name" property="categoryName"/>
+		</association>
+	</resultMap>
+
+</mapper>

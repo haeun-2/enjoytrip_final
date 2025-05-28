@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ssafy.trip.domain.article.interaction.ArticleInteractionDao">
+    <insert id="insert">
+        insert into article_like(article_id, member_id, created_at)
+        values(#{articleId}, #{memberId}, now())
+    </insert>
+
+    <update id="delete">
+        update article_like
+        set
+            deleted_at = now()
+        where article_id = #{articleId} and member_id = #{memberId}
+    </update>
+
+	<select id="exists">
+		select count(*)
+		from article_like
+		where article_id = #{articleId} and member_id = #{memberId}
+	</select>
+
+	<update id="reInsert">
+		update article_like
+		set
+		deleted_at = null, created_at = now()
+		where article_id = #{articleId} and member_id = #{memberId}
+	</update>
+
+    <insert id="insertReport">
+        insert into article_report(article_id, member_id, reason, status, created_at)
+        values(#{articleId}, #{memberId}, #{reason}, #{status}, now())
+    </insert>
+   
+   	<select id="selectReport" resultMap="ArticleReportResultMap">
+		select 
+			ar.*,
+		    a.title as article_title,
+		    m.name as member_name
+		from article_report ar
+			join article a on ar.article_id = a.id
+		    join member m on ar.member_id = m.id
+		where ar.id = #{id}
+   	</select>
+    
+    <update id="updateReport">
+    	update article_report set status = #{status}, handled_at = now() where id = #{id}
+    </update>
+    
+    <select id="selectAll" resultMap="ArticleReportResultMap">
+		select 
+			ar.*,
+		    a.title as article_title,
+		    m.name as member_name
+		from article_report ar
+			join article a on ar.article_id = a.id
+		    join member m on ar.member_id = m.id
+		<if test="status">
+			where ar.status = #{status}
+		</if>
+		limit ${size} offset ${offset}
+    </select>
+    
+    <select id="countAll">
+    	select 
+    		count(*)
+		from article_report ar
+		<if test="status">
+			where ar.status = #{status}
+		</if>
+    </select>
+    
+    <update id="block">
+    	update article set blocked_at = now() where id = (select article_id from article_report where id = #{id})
+    </update>
+    
+    <resultMap id="ArticleReportResultMap" type="com.ssafy.trip.domain.article.interaction.ArticleReport">
+	  <id property="id" column="id" />
+	  <result property="articleId" column="article_id" />
+	  <result property="memberId" column="member_id" />
+	  <result property="reason" column="reason" />
+	  <result property="createdAt" column="created_at" />
+	  <result property="handledAt" column="handled_at" />
+	  <result property="status" column="status" javaType="com.ssafy.trip.domain.article.enums.ReportStatus" />
+	
+	  <association property="article" javaType="com.ssafy.trip.domain.article.Article">
+	    <id property="id" column="article_id" />
+	    <result property="title" column="article_title" />
+	  </association>
+	
+	  <association property="member" javaType="com.ssafy.trip.domain.member.Member">
+	    <id property="id" column="member_id" />
+	    <result property="name" column="member_name" />
+	  </association>
+	</resultMap>
+    
+</mapper>

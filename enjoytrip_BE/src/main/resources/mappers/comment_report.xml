@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ssafy.trip.domain.article.comment.interaction.CommentReportDao">
+    <insert id="insertReport">
+        insert into comment_report(comment_id, member_id, reason, status, created_at)
+        values(#{commentId}, #{memberId}, #{reason}, #{status}, now())
+    </insert>
+    
+    <select id="selectReport" resultMap="CommentReportResultMap">
+		select 
+			cr.*,
+		    c.content as comment_content,
+		    m.name as member_name
+		from comment_report cr
+			join comment c on cr.comment_id = c.id
+		    join member m on cr.member_id = m.id
+		where cr.id = #{id}
+   	</select>
+    
+    <update id="updateReport">
+    	update comment_report set status = #{status}, handled_at = now() where id = #{id}
+    </update>
+    
+    <select id="selectAll" resultMap="CommentReportResultMap">
+		select 
+			cr.*,
+		    c.content as comment_content,
+		    m.name as member_name
+		from comment_report cr
+			join comment c on cr.comment_id = c.id
+		    join member m on cr.member_id = m.id
+		<if test="status">
+			where cr.status = #{status}
+		</if>
+		limit ${size} offset ${offset}
+    </select>
+    
+    <select id="countAll">
+    	select 
+    		count(*)
+		from comment_report cr
+		<if test="status">
+			where cr.status = #{status}
+		</if>
+    </select>
+    
+    <update id="block">
+    	update comment set blocked_at = now() where id = (select comment_id from comment_report where id = #{id})
+    </update>
+    
+    <resultMap id="CommentReportResultMap" type="com.ssafy.trip.domain.article.comment.interaction.CommentReport">
+	  <id property="id" column="id" />
+	  <result property="commentId" column="comment_id" />
+	  <result property="memberId" column="member_id" />
+	  <result property="reason" column="reason" />
+	  <result property="createdAt" column="created_at" />
+	  <result property="handledAt" column="handled_at" />
+	  <result property="status" column="status" javaType="com.ssafy.trip.domain.article.enums.ReportStatus" />
+	
+	  <association property="comment" javaType="com.ssafy.trip.domain.article.comment.Comment">
+	    <id property="id" column="comment_id" />
+	    <result property="content" column="comment_content" />	    
+	    <result property="articleId" column="article_id" />
+	  </association>
+	
+	  <association property="member" javaType="com.ssafy.trip.domain.member.Member">
+	    <id property="id" column="member_id" />
+	    <result property="name" column="member_name" />
+	  </association>
+	</resultMap>
+</mapper>

@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ssafy.trip.domain.article.comment.CommentDao">
+
+    <insert id="insert" parameterType="Comment" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO comment (parent_id, content, member_id, article_id, created_at)
+        VALUES (#{parentId}, #{content}, #{memberId}, #{articleId}, now())
+    </insert>
+
+    <update id="update" parameterType="Comment">
+        UPDATE comment
+        SET content = #{content}, modified_at = now()
+        WHERE id = #{id}
+    </update>
+
+    <update id="delete" parameterType="long">
+        UPDATE comment
+        SET deleted_at = now()
+        WHERE id = #{id}
+    </update>
+
+    <select id="selectById" parameterType="long" resultMap="commentMap">
+        SELECT *
+        FROM comment
+        WHERE id = #{id}
+        AND deleted_at IS NULL
+    </select>
+
+    <resultMap id="commentMap" type="Comment">
+        <id column="id" property="id" />
+        <result column="parent_id" property="parentId" />
+        <result column="content" property="content" />
+        <result column="member_id" property="memberId" />
+        <result column="article_id" property="articleId" />
+        <result column="created_at" property="createdAt" />
+        <result column="modified_at" property="modifiedAt" />
+        <result column="deleted_at" property="deletedAt" />
+    </resultMap>
+
+    <select id="selectByArticleId" resultMap="commentGroupMap">
+    	SELECT
+		    c.id            AS c_id,
+		    c.parent_id     AS c_parent_id,
+		    c.content       AS c_content,
+		    c.article_id    AS c_article_id,
+		    c.created_at    AS c_created_at,
+		    c.modified_at   AS c_modified_at,
+		    c.deleted_at    AS c_deleted_at,
+		
+		    cm.id           AS cm_id,
+		    cm.name         AS cm_name,
+		    cm.profile_image AS cm_profile_image,
+		
+		    r.id            AS r_id,
+		    r.parent_id     AS r_parent_id,
+		    r.content       AS r_content,
+		    r.article_id    AS r_article_id,
+		    r.created_at    AS r_created_at,
+		    r.modified_at   AS r_modified_at,
+		    r.deleted_at    AS r_deleted_at,
+		
+		    rm.id           AS rm_id,
+		    rm.name         AS rm_name,
+		    rm.profile_image AS rm_profile_image
+		
+		FROM comment c
+		LEFT JOIN member cm ON c.member_id = cm.id
+		
+		LEFT JOIN comment r 
+		  ON r.parent_id = c.id
+		 AND r.deleted_at IS NULL
+		 AND r.blocked_at IS NULL
+		
+		LEFT JOIN member rm ON r.member_id = rm.id
+		
+		WHERE c.article_id = #{articleId}
+		  AND c.parent_id IS NULL
+		  AND c.deleted_at IS NULL 
+		  AND c.blocked_at IS NULL
+		
+		ORDER BY c.created_at ASC, r.created_at ASC
+    </select>
+
+    <resultMap id="commentGroupMap" type="Comment" autoMapping="true">
+        <id column="c_id" property="id"/>
+        <result column="c_parent_id" property="parentId"/>
+        <result column="c_content" property="content"/>
+        <result column="c_article_id" property="articleId"/>
+        <result column="c_created_at" property="createdAt"/>
+        <result column="c_modified_at" property="modifiedAt"/>
+        <result column="c_deleted_at" property="deletedAt"/>
+        <association property="member" javaType="Member">
+            <id column="cm_id" property="id"/>
+            <result column="cm_name" property="name"/>
+            <result column="cm_profile_image" property="profileImage"/>
+        </association>
+        <collection property="replies" ofType="Comment" javaType="ArrayList" autoMapping="true">
+            <id column="r_id" property="id"/>
+            <result column="r_parent_id" property="parentId"/>
+            <result column="r_content" property="content"/>
+            <result column="r_article_id" property="articleId"/>
+            <result column="r_created_at" property="createdAt"/>
+            <result column="r_modified_at" property="modifiedAt"/>
+            <result column="r_deleted_at" property="deletedAt"/>
+            <association property="member" javaType="Member">
+                <id column="rm_id" property="id"/>
+                <result column="rm_name" property="name"/>
+                <result column="rm_profile_image" property="profileImage"/>
+            </association>
+        </collection>
+    </resultMap>
+
+</mapper>

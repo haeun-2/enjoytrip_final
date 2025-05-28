@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ssafy.trip.domain.attraction.interaction.AttractionLikeDao">
+
+    <insert id="insert">
+        insert into attraction_like(attraction_id, member_id, created_at)
+        values(#{attractionId}, #{memberId}, now())
+    </insert>
+
+    <update id="delete">
+        update attraction_like
+        set
+            deleted_at = now()
+        where attraction_id = #{attractionId} and member_id = #{memberId}
+    </update>
+
+    <select id="exists">
+        select count(*)
+        from attraction_like
+        where attraction_id = #{attractionId} and member_id = #{memberId}
+    </select>
+
+    <update id="reInsert">
+        update attraction_like
+        set
+        deleted_at = null, created_at = now()
+        where attraction_id = #{attractionId} and member_id = #{memberId}
+    </update>
+</mapper>

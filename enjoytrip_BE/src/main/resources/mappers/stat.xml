@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ssafy.trip.domain.admin.AdminStatDao">
+    <select id="getStatCount" resultMap="statCountMap">
+        SELECT
+        -- 전체 통계
+        (SELECT COUNT(*) FROM member WHERE deleted_at IS NULL) AS total_member,
+        (SELECT COUNT(*) FROM article) AS total_article,
+        (SELECT COUNT(*) FROM article_report WHERE status = 'PENDING') AS total_open_report,
+        (SELECT COUNT(*) FROM qna_answer WHERE status = 'PENDING') AS total_open_qna,
+        0 as total_open_qna,
+        -- 저번 달 등록 건수
+        (SELECT COUNT(*) FROM member
+        WHERE deleted_at IS NULL
+        AND MONTH(created_at) = MONTH(CURDATE() - INTERVAL 1 MONTH)
+        AND YEAR(created_at) = YEAR(CURDATE() - INTERVAL 1 MONTH)) AS prev_member,
+
+        (SELECT COUNT(*) FROM article
+        WHERE MONTH(created_at) = MONTH(CURDATE() - INTERVAL 1 MONTH)
+        AND YEAR(created_at) = YEAR(CURDATE() - INTERVAL 1 MONTH)) AS prev_article,
+
+        (SELECT COUNT(*) FROM article_report
+        WHERE status = 'PENDING'
+        AND MONTH(created_at) = MONTH(CURDATE() - INTERVAL 1 MONTH)
+        AND YEAR(created_at) = YEAR(CURDATE() - INTERVAL 1 MONTH)) AS prev_open_report,
+
+        (SELECT COUNT(*) FROM qna_answer
+        WHERE status = 'PENDING'
+        AND MONTH(created_at) = MONTH(CURDATE() - INTERVAL 1 MONTH)
+        AND YEAR(created_at) = YEAR(CURDATE() - INTERVAL 1 MONTH)) AS prev_open_qna,
+        -- 이번 달 등록 건수
+        (SELECT COUNT(*) FROM member
+        WHERE deleted_at IS NULL
+        AND MONTH(created_at) = MONTH(CURDATE())
+        AND YEAR(created_at) = YEAR(CURDATE())) AS now_member,
+
+        (SELECT COUNT(*) FROM article
+        WHERE MONTH(created_at) = MONTH(CURDATE())
+        AND YEAR(created_at) = YEAR(CURDATE())) AS now_article,
+
+        (SELECT COUNT(*) FROM article_report
+        WHERE status = 'PENDING'
+        AND MONTH(created_at) = MONTH(CURDATE())
+        AND YEAR(created_at) = YEAR(CURDATE())) AS now_open_report,
+
+        (SELECT COUNT(*) FROM qna_answer
+        WHERE status = 'PENDING'
+        AND MONTH(created_at) = MONTH(CURDATE())
+        AND YEAR(created_at) = YEAR(CURDATE())) AS now_open_qna
+    </select>
+
+
+    <select id="getMemberCount" resultMap="memberCountMap">
+        SELECT
+            COUNT(*) AS total_member,
+            SUM(CASE WHEN blocked_at IS NOT NULL THEN 1 ELSE 0 END) AS blocked_member,
+            SUM(CASE WHEN deleted_at IS NOT NULL THEN 1 ELSE 0 END) AS deleted_member,
+            SUM(CASE WHEN blocked_at IS NULL AND deleted_at IS NULL THEN 1 ELSE 0 END) AS active_member
+        FROM member
+    </select>
+
+    <select id="getMonthlyRows" resultType="com.ssafy.trip.controller.admin.member.AdminStatResponse$MonthlyRow">
+        SELECT
+            month,
+            COALESCE(article_count, 0) AS articleCount,
+            COALESCE(member_count, 0) AS memberCount,
+            COALESCE(report_count, 0) AS reportCount,
+            COALESCE(qna_count, 0) AS qnaCount,
+            COALESCE(plan_count, 0) AS planCount
+        FROM (
+            SELECT
+            m.month
+            , a.article_count
+            , mb.member_count
+            , r.report_count
+            , 0 as qna_count
+            , p.plan_count
+            FROM
+                (SELECT DISTINCT EXTRACT(MONTH FROM created_at) AS month FROM article
+                UNION
+                SELECT DISTINCT EXTRACT(MONTH FROM created_at) FROM member
+                UNION
+                SELECT DISTINCT EXTRACT(MONTH FROM created_at) FROM article_report
+                --          UNION
+                --          SELECT DISTINCT EXTRACT(MONTH FROM created_at) FROM qnas
+                UNION
+                SELECT DISTINCT EXTRACT(MONTH FROM created_at) FROM trip_plan
+                ) m
+            LEFT JOIN (
+            SELECT EXTRACT(MONTH FROM created_at) AS month, COUNT(*) AS article_count FROM article GROUP BY month
+            ) a ON m.month = a.month
+            LEFT JOIN (
+            SELECT EXTRACT(MONTH FROM created_at) AS month, COUNT(*) AS member_count FROM member GROUP BY month
+            ) mb ON m.month = mb.month
+            LEFT JOIN (
+            SELECT EXTRACT(MONTH FROM created_at) AS month, COUNT(*) AS report_count FROM article_report GROUP BY month
+            ) r ON m.month = r.month
+            --     LEFT JOIN (
+            --         SELECT EXTRACT(MONTH FROM created_at) AS month, COUNT(*) AS qna_count FROM qnas GROUP BY month
+            --     ) q ON m.month = q.month
+            LEFT JOIN (
+            SELECT EXTRACT(MONTH FROM created_at) AS month, COUNT(*) AS plan_count FROM trip_plan GROUP BY month
+            ) p ON m.month = p.month
+        ) sub
+        ORDER BY month;
+    </select>
+
+    <select id="getCategoryCount" resultMap="categoryCountMap">
+        SELECT
+        SUM(CASE WHEN style = 'RELAXING' THEN 1 ELSE 0 END) AS relaxing,
+        SUM(CASE WHEN style = 'SIGHTSEEING' THEN 1 ELSE 0 END) AS sight_seeing,
+        SUM(CASE WHEN style = 'NATURE' THEN 1 ELSE 0 END) AS nature,
+        SUM(CASE WHEN style = 'CULTURAL' THEN 1 ELSE 0 END) AS cultural,
+        SUM(CASE WHEN style = 'FOODIE' THEN 1 ELSE 0 END) AS foodie,
+        SUM(CASE WHEN style = 'ADVENTURE' THEN 1 ELSE 0 END) AS adventure,
+        SUM(CASE WHEN style = 'SHOPPING' THEN 1 ELSE 0 END) AS shopping,
+        SUM(CASE WHEN style = 'PHOTO' THEN 1 ELSE 0 END) AS travel
+        FROM trip_style;
+    </select>
+
+    <resultMap id="statCountMap" type="com.ssafy.trip.controller.admin.member.AdminStatResponse$Count">
+        <result property="totalMember" column="total_member" />
+        <result property="totalArticle" column="total_article" />
+        <result property="totalOpenReport" column="total_open_report" />
+        <result property="totalOpenQnA" column="total_open_qna" />
+
+        <result property="prevMember" column="prev_member" />
+        <result property="prevArticle" column="prev_article" />
+        <result property="prevOpenReport" column="prev_open_report" />
+        <result property="prevOpenQnA" column="prev_open_qna" />
+
+        <result property="nowMember" column="now_member" />
+        <result property="nowArticle" column="now_article" />
+        <result property="nowOpenReport" column="now_open_report" />
+        <result property="nowOpenQnA" column="now_open_qna" />
+    </resultMap>
+
+
+    <resultMap id="memberCountMap" type="com.ssafy.trip.controller.admin.member.AdminStatResponse$MemberCount">
+        <result property="totalMember" column="total_member"/>
+        <result property="activeMember" column="active_member"/>
+        <result property="deletedMember" column="deleted_member"/>
+        <result property="blockedMember" column="blocked_member"/>
+    </resultMap>
+
+
+    <resultMap id="monthlyRowMap" type="com.ssafy.trip.controller.admin.member.AdminStatResponse$MonthlyRow">
+        <result property="month" column="month"/>
+        <result property="articleCount" column="article_count"/>
+        <result property="memberCount" column="member_count"/>
+        <result property="reportCount" column="report_count"/>
+        <result property="qnaCount" column="qna_count"/>
+        <result property="planCount" column="plan_count"/>
+    </resultMap>
+
+
+    <resultMap id="categoryCountMap" type="com.ssafy.trip.controller.admin.member.AdminStatResponse$CategoryCount">
+        <result property="relaxing" column="relaxing"/>
+        <result property="sightSeeing" column="sight_seeing"/>
+        <result property="nature" column="nature"/>
+        <result property="cultural" column="cultural"/>
+        <result property="foodie" column="foodie"/>
+        <result property="adventure" column="adventure"/>
+        <result property="shopping" column="shopping"/>
+        <result property="travel" column="travel"/>
+    </resultMap>
+
+</mapper>

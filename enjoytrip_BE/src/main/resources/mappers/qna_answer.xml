@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ssafy.trip.domain.article.qna.QnaAnswerDao">
+	
+	<insert id="insert" useGeneratedKeys="true" keyProperty="id">
+		INSERT INTO qna_answer (article_id, status) VALUES (#{articleId}, 'PENDING')
+	</insert>
+	
+	<update id="update">
+		update qna_answer set content = #{content}, member_id = #{memberId}, status = 'ANSWERED', created_at = now() where id = #{id}
+	</update>
+	
+	<select id="selectById">
+		select * from qna_answer where id = #{id}
+	</select>
+</mapper>

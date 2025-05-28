@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ssafy.trip.domain.memberplace.MemberPlaceDao">
+	
+	<select id="selectAll" resultMap="memberPlaceMap">
+	    select 
+	        mp.*,
+	        s.sido_code, s.sido_name,
+	        g.gugun_code, g.gugun_name,
+	        c.category_name,
+	        m.name as member_name,
+	        CASE
+				WHEN #{loginMemberId} IS NULL THEN 0
+				WHEN mpl.member_place_id IS NOT NULL THEN 1
+				ELSE 0
+			END AS is_liked
+	    from member_place mp 
+	        join sido s on mp.sido_id = s.id 
+	        join gugun g on mp.gugun_id = g.id 
+	        join category c on mp.category_id = c.category_id 
+	        join member m on mp.member_id = m.id
+	        <!-- 로그인한 경우 좋아요 여부 판단-->
+			<if test="loginMemberId != null">
+				LEFT JOIN member_place_like mpl
+				ON mpl.member_place_id = mp.id AND mpl.member_id = #{loginMemberId}
+				AND mpl.deleted_at is null
+			</if>
+			<if test="loginMemberId == null">
+				LEFT JOIN member_place_like mpl
+				ON 1=0  <!-- join 안 되게 해서 무조건 NULL로 만듦 -->
+			</if>
+	    where mp.deleted_at is null
+	    <if test="memberId != null">
+	        and mp.member_id = #{memberId}
+	    </if>
+	    <if test="sidoIds != null and !sidoIds.isEmpty()">
+	        and mp.sido_id IN
+	        <foreach item="sidoId" collection="sidoIds" open="(" separator="," close=")">
+	            #{sidoId}
+	        </foreach>
+	    </if>    	
+	    <if test="categoryId != null">
+	        and mp.category_id = #{categoryId}
+	    </if>
+	    <if test="keyword != null">
+	        and mp.name like concat('%', #{keyword}, '%')
+	    </if>
+	    <if test="sort!=null">
+    		order by ${sort} ${sortDir}
+    	</if>
+	    limit ${size} offset ${offset}
+	</select>
+		
+	<select id="countAll">
+		select 
+			count(*)
+		from
+			member_place mp
+		where 
+			mp.deleted_at is null
+			<if test="memberId!=null">and mp.member_id = #{memberId}</if>
+			<if test="sidoIds != null and !sidoIds.isEmpty()">
+	        	and mp.sido_id IN
+	       		<foreach item="sidoId" collection="sidoIds" open="(" separator="," close=")">
+	        		#{sidoId}
+	    		</foreach>
+	    	</if>    	
+		    <if test="categoryId!=null">and mp.category_id = #{categoryId}</if>
+	    	<if test="keyword!=null">and mp.name like concat("%", #{keyword}, "%")</if>
+	</select>
+	
+	<select id="select" resultMap="memberPlaceMap">
+		select 
+			mp.*,
+		    s.sido_code, s.sido_name,
+		    g.gugun_code, g.gugun_name,
+		    c.category_name,
+		    m.name as member_name
+		from member_place mp 
+			join sido s on mp.sido_id=s.id 
+    		join gugun g on mp.gugun_id=g.id 
+    		join category c on mp.category_id=c.category_id 
+    		join member m on mp.member_id=m.id
+    	where mp.id = #{id} 
+	    	and mp.deleted_at is null
+	</select>
+	
+	<insert id="insert" useGeneratedKeys="true" keyProperty="id">
+		insert into member_place(created_at, name, latitude, longitude, member_id, visited_at, description, address, category_id, image, sido_id, gugun_id)
+		 		values(now(), #{name}, #{latitude}, #{longitude}, #{member.id}, #{visitedAt}, #{description}, #{address}, #{category.categoryId}, #{image}, #{sido.id}, #{gugun.id});
+	</insert>
+	
+	<update id="update">
+		update member_place
+		<set>
+			<if test="name!=null">name = #{name}, </if>
+			<if test="latitude!=null">latitude = #{latitude}, </if>
+			<if test="longitude!=null">longitude = #{longitude}, </if>
+			<if test="visitedAt!=null">visited_at = #{visitedAt}, </if>
+			<if test="description!=null">description = #{description}, </if>
+			<if test="address!=null">address = #{address}, </if>
+			<if test="category!=null and category.categoryId!=null">category_id = #{category.categoryId}, </if>
+			<if test="image!=null">image = #{image}, </if>
+			<if test="sido!=null and sido.id!=null">sido_id = #{sido.id}, </if>
+			<if test="gugun!=null and gugun.id!=null">gugun_id = #{gugun.id}, </if>
+			modified_at = now(),
+		</set>
+		where id = #{id}
+	</update>
+	
+	<update id="delete">
+		update member_place set deleted_at = now() where id = #{id} 
+	</update>
+
+	<update id="updateLike">
+		update member_place set like_count = #{likeCount} where id=#{id}
+	</update>
+	
+	<resultMap type="MemberPlace" id="memberPlaceMap">
+		<id column="id" property="id"/>
+		<result column="created_at" property="createdAt"/>
+		<result column="modified_at" property="modifiedAt"/>
+		<result column="name" property="name"/>
+		<result column="latitude" property="latitude"/>
+		<result column="longitude" property="longitude"/>
+		<result column="visited_at" property="visitedAt"/>
+		<result column="description" property="description"/>
+		<result column="address" property="address"/>
+		<result column="image" property="image"/>
+		<result column="like_count" property="likeCount"/>
+		<result column="deleted_at" property="deletedAt"/>
+		<result property="isLiked" column="is_liked" />
+		
+		<!-- Sido -->
+	    <association property="sido" javaType="Sido">
+	        <id property="id" column="sido_id"/>
+	        <result property="sidoCode" column="sido_code"/>
+	        <result property="sidoName" column="sido_name"/>
+	    </association>
+	
+	    <!-- Gugun -->
+	    <association property="gugun" javaType="Gugun">
+	        <id property="id" column="gugun_id"/>
+	        <result property="sidoCode" column="sido_code"/>
+	        <result property="gugunCode" column="gugun_code"/>
+	        <result property="gugunName" column="gugun_name"/>
+	    </association>
+	    
+	    <!-- Category -->
+	    <association property="category" javaType="Category">
+	    	<id property="categoryId" column="category_id" />
+	    	<result property="categoryName" column="category_name" />
+	    </association>
+	
+	    <!-- Member -->
+	    <association property="member" javaType="Member">
+	        <id property="id" column="member_id"/>
+	        <result property="name" column="member_name"/>
+	    </association>
+	</resultMap>
+
+	<resultMap type="MemberPlace" id="memberPlaceMapWithAlias">
+		<id column="mp_id" property="id"/>
+		<result column="mp_name" property="name"/>
+		<result column="mp_latitude" property="latitude"/>
+		<result column="mp_longitude" property="longitude"/>
+		<result column="mp_visited_at" property="visitedAt"/>
+		<result column="mp_description" property="description"/>
+		<result column="mp_address" property="address"/>
+		<result column="mp_image" property="image"/>
+		<result column="mp_like_count" property="likeCount"/>
+		<result column="mp_deleted_at" property="deletedAt"/>
+		<result column="member_id" property="memberId"/>
+		<result column="member_name" property="memberName"/>
+		<association property="category" javaType="Category">
+			<id column="m_category_id" property="categoryId"/>
+			<result column="m_category_name" property="categoryName"/>
+		</association>
+	</resultMap>
+	
+</mapper>
